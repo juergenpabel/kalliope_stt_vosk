@@ -17,7 +17,7 @@ resource_directory:
 kalliope install --git-url https://github.com/juergenpabel/kalliope-vosk.git
 ```
 
-Change default STT to VOSK in settings.yml
+Change default STT to VOSK in settings.yml:
 ```yml
 default_speech_to_text: "vosk"
 ```
@@ -29,10 +29,21 @@ This repository is a fork of https://github.com/veka-server/kalliope-vosk; in th
 Download and install a language model you like (https://alphacephei.com/vosk/models). Unzip it and remember its path because you will have to add it to the settings.yml file afterwards. It is recommended to place the language model also in the corresponding resource directory for STT (see above).
 
 
-Change default STT to VOSK in settings.yml
+Set language model (parameter "model_path") in settings.yml:
 ```yml
   - vosk:
-      language: "<relative or absolute directory path to your language model>"
+      model_path: "<relative or absolute directory path to your language model>"
+```
+
+## Language model optimization
+Due to the string based (vs. intent based) parsing of (by the STT engine transcribed) speech utterances into matching orders, the STT enging can actually calculate the full valid grammar set (words) by adding up all words from all existing orders and also adding all names and values of kalliope variables. (In other words: any words outside that word list would not be "understood" by kalliope order parser anyhow.) Therefore, this STT implementation __by default__ calculates the grammar set base on orders and variables present in kalliope (at the time of each STT invocation). It therefore reduces the languages grammar (the word list) from something like >100.000 entries to something like <1.000 entries (depends on your specific setup, of course).
+
+The effect of the reduced grammar set is: __almost 0% word error rate__ (tested over many days with the german language model "vosk-model-small-de-0.15" from model page from above, YMMV). Anyhow, this optimization can be disabled by setting calculate_grammar to False in settings.yml.
+
+```yml
+  - vosk:
+      model_path: "<relative or absolute directory path to your language model>"
+      calculate_grammer: False
 ```
 
 
