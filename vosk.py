@@ -30,7 +30,11 @@ class Vosk(SpeechRecognition):
         """
 
         SpeechRecognition.__init__(self, kwargs.get('audio_file_path', None))
-        SetLogLevel(kwargs.get('log_level', -9))
+        log_level = kwargs.get('log_level', -99)
+        if log_level == -99:
+            if logger.isEnabledFor(logging.DEBUG):
+                log_level = 0
+        SetLogLevel(log_level)
 
         self.main_controller_callback = callback
         self.model_path = kwargs.get('model_path', None)
