@@ -81,8 +81,8 @@ class Vosk(SpeechRecognition):
         wav = audio_data.get_raw_data(convert_rate=16000, convert_width=2)
         try:
             result = None
-            if not self.kaldirecognizer.AcceptWaveform(wav):
-                logger.debug("[vosk] KaldiRecognizer.AcceptWaveform() returned False")
+            if self.kaldirecognizer.AcceptWaveform(wav) < 0:
+                logger.error("[vosk] KaldiRecognizer.AcceptWaveform() returned error")
                 raise sr.UnknownValueError
             result = json.loads(self.kaldirecognizer.FinalResult())
             logger.debug("[vosk] KaldiRecognizer.FinalResult() returned '%s'" % result['text'])
