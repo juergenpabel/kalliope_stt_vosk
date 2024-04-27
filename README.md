@@ -41,7 +41,7 @@ The effect of the reduced grammar is: __almost 0% word error rate__ (tested over
 ```yml
   - vosk:
       model_path: "<relative or absolute directory path to your language model>"
-      calculate_grammer: False
+      calculate_grammar: False
 ```
 
 

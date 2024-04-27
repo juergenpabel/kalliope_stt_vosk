@@ -1,6 +1,3 @@
-import speech_recognition as sr
-
-import sys
 import json
 import os
 import logging
@@ -9,18 +6,19 @@ import re
 from kalliope.core import Utils
 from kalliope.core.ConfigurationManager import BrainLoader
 
-import importlib
-importlib.import_module('vosk')
 from vosk import Model, KaldiRecognizer, SetLogLevel
 
 from kalliope.stt.Utils import SpeechRecognition
-from speech_recognition import Microphone
+
 
 logging.basicConfig()
 logger = logging.getLogger("kalliope")
 
 
+
 class Vosk(SpeechRecognition):
+
+    kaldirecognizer = None
 
     def __init__(self, callback=None, **kwargs):
         """
@@ -38,7 +36,7 @@ class Vosk(SpeechRecognition):
 
         self.main_controller_callback = callback
         self.model_path = kwargs.get('model_path', None)
-        self.grammar_calculate = kwargs.get('grammar_calculate', True)
+        self.grammar_calculate = kwargs.get('calculate_grammar', True)
 
         if self.grammar_calculate:
             logger.debug("[vosk] generating kaldi grammar from all synapse orders and variables:")
@@ -60,6 +58,7 @@ class Vosk(SpeechRecognition):
             if self.model_path is None or os.path.exists(self.model_path) == False:
                 Utils.print_danger("Please configure parameter 'model_path' to a valid language model")
                 exit (1)
+            logger.info('[vosk] Loading model...')
             klass.model[self.model_path] = Model(self.model_path)
             logger.debug("[vosk] model '%s' is added to the class cache" % self.model_path)
         if self.grammar_calculate:
@@ -69,38 +68,24 @@ class Vosk(SpeechRecognition):
             self.grammar_calculated = list(set(" ".join(set(self.grammar_calculated)).split()))
             self.grammar_calculated.sort()
             logger.debug("[vosk] applying the calculated grammar for KaldiRecognizer: %s" % (self.grammar_calculated))
-            self.kaldirecognizer = KaldiRecognizer(klass.model[self.model_path], 16000, json.dumps(self.grammar_calculated, ensure_ascii=False))
+            if self.kaldirecognizer is None:
+                self.kaldirecognizer = KaldiRecognizer(klass.model[self.model_path], 16000, json.dumps(self.grammar_calculated, ensure_ascii=False))
         else:
             logger.debug("[vosk] using the grammar dictionary of the model for KaldiRecognizer")
-            self.kaldirecognizer = KaldiRecognizer(klass.model[self.model_path], 16000)
+            if self.kaldirecognizer is None:
+                self.kaldirecognizer = KaldiRecognizer(klass.model[self.model_path], 16000)
         self.set_callback(self.vosk_callback)
         self.start_processing()
 
 
     def vosk_callback(self, recognizer, audio_data):
         wav = audio_data.get_raw_data(convert_rate=16000, convert_width=2)
-        try:
-            result = None
-            if self.kaldirecognizer.AcceptWaveform(wav) < 0:
-                logger.error("[vosk] KaldiRecognizer.AcceptWaveform() returned error")
-                raise sr.UnknownValueError
-            result = json.loads(self.kaldirecognizer.FinalResult())
-            logger.debug("[vosk] KaldiRecognizer.FinalResult() returned '%s'" % result['text'])
-            captured_audio = result['text']
-            Utils.print_success("Vosk thinks you said '%s'" % captured_audio)
-            self._analyse_audio(captured_audio)
-
-        except sr.UnknownValueError:
-            Utils.print_warning("Vosk Speech Recognition could not understand audio")
-            self._analyse_audio(audio_to_text=None)
-
-        except sr.RequestError as e:
-            Utils.print_danger("Could not request results from Vosk Speech Recognition service; %s" % (format(e)))
-            self._analyse_audio(audio_to_text=None)
-
-        except AssertionError:
-            Utils.print_warning("No audio caught from microphone")
-            self._analyse_audio(audio_to_text=None)
+        self.kaldirecognizer.AcceptWaveform(wav)
+        result = json.loads(self.kaldirecognizer.FinalResult())
+        logger.debug("[vosk] KaldiRecognizer.FinalResult() returned '%s'" % result['text'])
+        captured_audio = result['text']
+        Utils.print_success("Vosk thinks you said '%s'" % captured_audio)
+        self._analyse_audio(captured_audio)
 
 
     def _analyse_audio(self, audio_to_text):
